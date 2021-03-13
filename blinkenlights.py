@@ -4,11 +4,17 @@
 
 import RPi.GPIO as gpio
 import time
+import sys
 
 impstart = time.time()
 
+
+
 # scapy 
 from scapy.all import *
+
+# threads
+import _thread
 
 print('imports ready: %s seconds' % (time.time() - impstart))
 
@@ -30,43 +36,51 @@ for p in outputs:
 
 def toggle_pin(pin):
     gpio.output(pin, gpio.HIGH)
-    time.sleep(0.1)
+    time.sleep(0.3)
     gpio.output(pin, gpio.LOW)
 
 
 # handler
-def process_packet(packet):
+def thread_handler(packet):
     if packet.haslayer(TCP):
         #import code
         #code.interact(local=locals())
         payload = bytes(packet[TCP].payload)
         #if b"HTTP" in  payload:
-        if payload.haslayer(HTTP):
+        if b'HTTP' in payload or packet[TCP].sport == 80 or \
+               packet[TCP].dport == 80:
             print("---------- HTTP ------------")
             print(payload)
             toggle_pin(httpGreen)
         
         if packet[TCP].sport == 443 or packet[TCP].dport == 443:
             print("---------- 443 ------------")
+            #toggle_pin(tlsYellow)
             toggle_pin(tlsYellow)
     
     
-    elif packet.haslayer(UDP):
+    elif packet.haslayer(DNS):
         
-        if packet[UDP].haslayer(DNS):
-            print("------------ DNS detected -----------")
-            toggle_pin(dnsBlue)
-            print(packet[DNS])
-        else:
-            print("---------- some UDP ----------")
-            print(packet[UDP])
-            toggle_pin(udpRed)
+        print("------------ DNS detected -----------")
+        toggle_pin(dnsBlue)
+        print(packet[DNS])
+    elif packet.haslayer(UDP):
+        print("---------- some UDP ----------")
+        print(packet[UDP])
+        toggle_pin(udpRed)
  
         
 
+def process_packet(packet):
+    _thread.start_new_thread(thread_handler, (packet,))
 
+dev = 'eth0'
+if len(sys.argv) >= 2:
+    dev = sys.argv[1]
+
+print("starting capture on", dev)
 # start sniffing packet
-sniff(filter="tcp or udp", prn=process_packet, iface="eth0", store=False)
+sniff(filter="", prn=process_packet, iface=dev, store=False)
 
 
 
