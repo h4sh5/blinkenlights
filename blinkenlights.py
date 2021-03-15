@@ -46,9 +46,9 @@ def thread_handler(packet):
         #import code
         #code.interact(local=locals())
         payload = bytes(packet[TCP].payload)
-        #if b"HTTP" in  payload:
-        if b'HTTP' in payload or packet[TCP].sport == 80 or \
-               packet[TCP].dport == 80:
+        if b"HTTP" in  payload or packet[TCP].sport == 80 \
+            or packet[TCP].dport == 80:
+        #if payload.haslayer(HTTP):
             print("---------- HTTP ------------")
             print(payload)
             toggle_pin(httpGreen)
@@ -64,7 +64,7 @@ def thread_handler(packet):
         print("------------ DNS detected -----------")
         toggle_pin(dnsBlue)
         print(packet[DNS])
-    elif packet.haslayer(UDP):
+    elif packet.haslayer(UDP) and not packet.haslayer(DHCP):
         print("---------- some UDP ----------")
         print(packet[UDP])
         toggle_pin(udpRed)
